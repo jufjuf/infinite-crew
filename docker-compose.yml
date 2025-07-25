@@ -1,0 +1,97 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: infinitecrew
+      POSTGRES_PASSWORD: infinitecrew
+      POSTGRES_DB: infinitecrew
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U infinitecrew"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  master:
+    build:
+      context: .
+      dockerfile: master/Dockerfile
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - DATABASE_URL=postgresql://infinitecrew:infinitecrew@postgres:5432/infinitecrew
+      - OPENAI_API_BASE=${OPENAI_API_BASE}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - CREWAI_MODEL_NAME=${CREWAI_MODEL_NAME}
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./master:/app/master
+      - ./worker:/app/worker
+    command: python main.py monitor
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - DATABASE_URL=postgresql://infinitecrew:infinitecrew@postgres:5432/infinitecrew
+      - OPENAI_API_BASE=${OPENAI_API_BASE}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - CREWAI_MODEL_NAME=${CREWAI_MODEL_NAME}
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./worker:/app/worker
+      - ./master:/app/master
+    deploy:
+      replicas: 2  # Start with 2 workers
+
+  ui:
+    build:
+      context: .
+      dockerfile: ui/Dockerfile
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - DATABASE_URL=postgresql://infinitecrew:infinitecrew@postgres:5432/infinitecrew
+      - OPENAI_API_BASE=${OPENAI_API_BASE}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - CREWAI_MODEL_NAME=${CREWAI_MODEL_NAME}
+    ports:
+      - "8501:8501"
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./ui:/app/ui
+      - ./master:/app/master
+
+volumes:
+  redis_data:
+  postgres_data:

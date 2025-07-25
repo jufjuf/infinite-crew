@@ -1,105 +1,208 @@
-# Infinite Crew - Autonomous Agent Stack on Railway
+# 🚀 Infinite Crew - Autonomous Agent Stack on Railway
 
-## Overview
+[![Railway](https://img.shields.io/badge/Deploy%20on-Railway-blueviolet)](https://railway.app)
+[![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://python.org)
+[![CrewAI](https://img.shields.io/badge/CrewAI-0.30.0-green.svg)](https://github.com/joaomdmoura/crewAI)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Infinite Crew is a self-scaling agent system that can recursively break down complex tasks into sub-tasks, spawn Docker-based CrewAI agents on Railway, and orchestrate them to completion.
+## 🤖 Overview
 
-## Architecture
+Infinite Crew is a self-scaling agent system that can recursively break down complex tasks into sub-tasks, spawn Docker-based CrewAI agents on Railway, and orchestrate them to completion. Think of it as **agents that create agents** - a truly autonomous system that scales with task complexity.
 
-1. **Master Orchestrator**: Always-on service that decomposes tasks
-2. **Task Queue**: Redis-based queue for distributing work
-3. **Result Store**: PostgreSQL database for storing outputs
-4. **Sub-Agent Workers**: Ephemeral Railway services that execute tasks
-5. **Docker Base Image**: Shared image for all workers
+### ✨ Key Features
 
-## Setup Instructions
+- **Recursive Task Decomposition**: Automatically breaks complex missions into manageable sub-tasks
+- **Auto-Scaling Workers**: Spawns CrewAI agents on-demand using Railway's container infrastructure
+- **Hierarchical Execution**: Maintains parent-child relationships between tasks
+- **Real-Time Monitoring**: Beautiful Streamlit UI to track progress and view results
+- **Zero Infrastructure Management**: Fully managed on Railway with Redis and PostgreSQL
+
+## 🏗️ Architecture
+
+```
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│   Streamlit UI  │────▶│Master Orchestrator│◀───│  Redis Queue    │
+└─────────────────┘     └─────────────────┘     └─────────────────┘
+                               │                          │
+                               ▼                          ▼
+                        ┌─────────────────┐     ┌─────────────────┐
+                        │   PostgreSQL    │     │ CrewAI Workers  │
+                        │   (Results)     │◀────│   (Docker)      │
+                        └─────────────────┘     └─────────────────┘
+```
+
+## 🚀 Quick Start
 
 ### Prerequisites
 
-- Railway account (free tier works)
-- TogetherAI API key
+- [Railway account](https://railway.app) (free tier works!)
+- [TogetherAI API key](https://api.together.xyz/) for LLM access
 - Docker installed locally
-- Railway CLI installed: `npm i -g @railway/cli`
-- GitHub Container Registry access
+- Node.js (for Railway CLI)
 
-### Quick Start
+### 1. Clone and Setup
 
-1. Clone the repository:
 ```bash
+# Clone the repository
 git clone https://github.com/jufjuf/infinite-crew
 cd infinite-crew
-```
 
-2. Install Railway CLI and login:
-```bash
+# Install Railway CLI
+npm install -g @railway/cli
 railway login
+
+# Copy environment template
+cp .env.template .env
+# Edit .env with your TogetherAI API key
 ```
 
-3. Initialize Railway project:
+### 2. Deploy to Railway
+
 ```bash
+# Run the deployment script
+chmod +x scripts/deploy.sh
+./scripts/deploy.sh
+```
+
+Or manually:
+
+```bash
+# Initialize Railway project
 railway init
+
+# Add databases
 railway add --service --database Redis
 railway add --service --database PostgreSQL
+
+# Deploy services
+railway up
 ```
 
-4. Build and push Docker image:
-```bash
-docker build -f Dockerfile.worker -t ghcr.io/jufjuf/crew-worker:latest .
-docker push ghcr.io/jufjuf/crew-worker:latest
-```
+### 3. Configure Environment Variables
 
-5. Deploy services:
-```bash
-# Deploy master orchestrator
-railway add --service --name master
-railway up --service master
+In your Railway dashboard, set these variables:
 
-# Deploy worker template
-railway add --service --name crew-worker --image ghcr.io/jufjuf/crew-worker:latest
-
-# Deploy UI (optional)
-railway add --service --name ui
-railway up --service ui
-```
-
-6. Configure environment variables in Railway dashboard
-
-7. Create the database schema:
-```sql
-CREATE TABLE results (
-    id UUID PRIMARY KEY,
-    parent_id UUID REFERENCES results(id),
-    prompt TEXT,
-    output TEXT,
-    depth INT,
-    created_at TIMESTAMPTZ DEFAULT now()
-);
-```
-
-## Usage
-
-Access the Streamlit UI at your Railway-generated domain and enter a mission. The system will:
-
-1. Break down your request into sub-tasks
-2. Spawn worker containers for each task
-3. Store results in PostgreSQL
-4. Recursively create deeper tasks if needed
-
-## Environment Variables
-
-- `OPENAI_API_BASE`: TogetherAI endpoint
 - `OPENAI_API_KEY`: Your TogetherAI API key
-- `CREWAI_MODEL_NAME`: Model to use (default: Mixtral-8x7B)
-- `REDIS_URL`: Automatically set by Railway
-- `DATABASE_URL`: Automatically set by Railway
-- `RAILWAY_TOKEN`: For programmatic deployments
+- `OPENAI_API_BASE`: `https://api.together.xyz/v1`
+- `CREWAI_MODEL_NAME`: `mistralai/Mixtral-8x7B-Instruct-v0.1`
 
-## Monitoring
+### 4. Access the UI
 
-- Check Redis queue: `railway redis-cli llen tasks`
-- View Railway logs for each service
-- Query PostgreSQL for results
+Visit your Railway-generated domain to access the Streamlit interface.
 
-## License
+## 💻 Local Development
 
-MIT
+For local development with hot-reload:
+
+```bash
+# Setup local environment
+chmod +x scripts/local-dev.sh
+./scripts/local-dev.sh
+
+# Access UI at http://localhost:8501
+```
+
+## 📝 Example Usage
+
+### Simple Task
+```python
+"Write a haiku about artificial intelligence"
+```
+
+### Complex Mission
+```python
+"Create a comprehensive business plan for an AI-powered education startup:
+1. Market analysis and competitor research
+2. Product development roadmap
+3. Financial projections for 3 years
+4. Go-to-market strategy
+5. Team structure and hiring plan"
+```
+
+The system will:
+1. Break this into sub-tasks
+2. Spawn specialized agents for each task
+3. Execute them in parallel
+4. Synthesize results
+5. Potentially spawn refinement tasks
+
+## 📊 Monitoring
+
+- **Queue Status**: Check Redis with `railway redis-cli llen tasks`
+- **Live Logs**: View in Railway dashboard or `railway logs`
+- **Results**: Query PostgreSQL or use the Streamlit UI
+- **Task Tree**: Visualize task hierarchies in the UI
+
+## 🛠️ Configuration
+
+### Scaling Parameters
+
+Edit `worker/worker.py`:
+- `MAX_DEPTH`: Maximum recursion depth (default: 2)
+- `REFINEMENT_THRESHOLD`: Minimum output length for refinement (default: 500)
+
+### Model Selection
+
+Change `CREWAI_MODEL_NAME` to use different models:
+- `mistralai/Mixtral-8x7B-Instruct-v0.1` (default)
+- `meta-llama/Llama-2-70b-chat-hf`
+- `NousResearch/Nous-Hermes-2-Mixtral-8x7B-DPO`
+
+## 📁 Project Structure
+
+```
+infinite-crew/
+├── master/           # Orchestrator service
+│   ├── main.py      # Task decomposition & monitoring
+│   └── Dockerfile
+├── worker/          # CrewAI worker service  
+│   └── worker.py    # Task execution logic
+├── ui/              # Streamlit interface
+│   └── app.py       # Web dashboard
+├── scripts/         # Deployment & dev tools
+├── examples/        # Usage examples
+└── tests/          # Test suite
+```
+
+## 🤝 Contributing
+
+We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+### Priority Areas
+
+- 🔄 Retry logic and error handling
+- 📈 Cost tracking and optimization
+- 🔌 Webhook integrations
+- 🎯 Task prioritization
+- 💾 Result caching
+
+## 🐛 Troubleshooting
+
+### Workers not starting
+- Verify Docker image is pushed to GHCR
+- Check Railway logs for pull errors
+
+### Tasks stuck in queue
+- Confirm API credentials are set
+- Check worker logs for errors
+
+### Database connection issues
+- Verify `DATABASE_URL` in Railway
+- Run `scripts/init.sql` manually if needed
+
+## 📚 Resources
+
+- [Architecture Deep Dive](ARCHITECTURE.md)
+- [Railway Documentation](https://docs.railway.app)
+- [CrewAI Documentation](https://github.com/joaomdmoura/crewAI)
+- [TogetherAI Models](https://docs.together.ai/docs/inference-models)
+
+## 📄 License
+
+MIT License - see [LICENSE](LICENSE) file.
+
+---
+
+**Built with ❤️ using CrewAI and Railway**
+
+*"Agents creating agents, turtles all the way down"* 🐢

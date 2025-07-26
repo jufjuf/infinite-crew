@@ -1,0 +1,51 @@
+# Railway configuration for Infinite Crew
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "master/Dockerfile"
+
+[deploy]
+numReplicas = 1
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
+
+# Master service - Main orchestrator
+[[services]]
+name = "master"
+type = "web"
+port = 8000
+dockerfilePath = "master/Dockerfile"
+startCommand = "python main.py monitor"
+
+[services.deploy]
+numReplicas = 1
+restartPolicyType = "ALWAYS"
+
+# Worker service - Task executor
+[[services]]
+name = "worker"
+type = "worker"
+dockerfilePath = "Dockerfile.worker"
+startCommand = "python worker.py"
+
+[services.deploy]
+numReplicas = 1
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 0
+
+# UI service - Streamlit interface
+[[services]]
+name = "ui"
+type = "web"
+port = 8501
+dockerfilePath = "ui/Dockerfile"
+startCommand = "streamlit run app.py --server.port=$PORT --server.address=0.0.0.0"
+
+[services.deploy]
+numReplicas = 1
+restartPolicyType = "ALWAYS"
+
+# Environment variables will be configured in Railway dashboard:
+# - REDIS_URL
+# - DATABASE_URL
+# - OPENAI_API_KEY
+# - RAILWAY_WORKER_ENDPOINT
